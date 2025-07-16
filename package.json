@@ -9,21 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "tailwindcss": "^4.1.11",
-    "postcss": "^8.5.6",
-    "autoprefixer": "^10.4.21",
     "axios": "^1.10.0",
+    "bootstrap": "^5.3.7",
     "jwt-decode": "^4.0.0",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
     "vue3-google-login": "^2.0.33"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.11",
     "@vitejs/plugin-vue": "^6.0.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.11",
     "vite": "^7.0.3"
   }
 }
