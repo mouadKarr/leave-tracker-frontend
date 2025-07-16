@@ -1,23 +1,19 @@
 <template>
-  <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
-    <div class="p-4 bg-white rounded shadow" style="max-width: 400px; width: 100%;">
-      <h1 class="mb-4 text-center text-primary">Connexion Google</h1>
+  <div>
+    <h1>Connexion Google</h1>
+    <div ref="googleButton"></div>
+    <p>{{ message }}</p>
 
-      <div ref="googleButton" class="d-flex justify-content-center mb-3"></div>
-
-      <p class="text-center" :class="messageClass">{{ message }}</p>
-
-      <div v-if="user" class="text-center mt-4">
-        <p><strong>FullName :</strong> {{ user.name }}</p>
-        <p><strong>Email :</strong> {{ user.email }}</p>
-        <button @click="logout" class="btn btn-danger mt-3 w-100">Déconnexion</button>
-      </div>
+    <div v-if="user">
+      <p>FullName : {{ user.name }}</p>
+      <p>Email : {{ user.email }}</p>
+      <button @click="logout">Déconnexion</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { loginWithGoogle } from '@/services/authService'
 
@@ -27,12 +23,6 @@ const router = useRouter()
 const message = ref('En attente de connexion...')
 const user = ref(null)
 const googleButton = ref(null)
-
-const messageClass = computed(() => {
-  if (message.value.includes('Bienvenue')) return 'text-success fw-semibold'
-  if (message.value.includes('Erreur')) return 'text-danger fw-semibold'
-  return 'text-muted'
-})
 
 function decodeJwt(token) {
   const base64Url = token.split('.')[1]
@@ -45,20 +35,15 @@ async function handleCredentialResponse(response) {
   if (response.credential) {
     try {
       const res = await loginWithGoogle(response.credential)
-      console.log('Réponse loginWithGoogle:', res)
       const decoded = decodeJwt(res.token)
-      console.log('Decoded JWT:', decoded)
 
-      user.value = {
-        name: decoded.name || decoded.fullname || decoded.given_name || 'Utilisateur',
-        email: decoded.email || decoded.email_address || 'Email non disponible',
-      }
-      message.value = `Bienvenue ${user.value.name} !`
+      user.value = decoded
+      message.value = `Bienvenue ${decoded.name} !`
 
       localStorage.setItem('token', res.token)
       if (res.userId) localStorage.setItem('userId', res.userId)
 
-      router.push('/')
+      router.push('/demande-conge')
     } catch (err) {
       console.error('❌ Erreur lors de la connexion backend:', err)
       message.value = 'Erreur lors de la connexion, veuillez réessayer.'
@@ -90,7 +75,3 @@ onMounted(() => {
   }
 })
 </script>
-
-<style scoped>
-/* Tu peux personnaliser davantage ici */
-</style>
