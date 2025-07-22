@@ -3,7 +3,7 @@
     <form
       @submit.prevent="submitLeave"
       class="p-4 bg-white rounded shadow w-100"
-      style="max-width: 500px;"
+      style="max-width: 800px;"
     >
       <h3 class="mb-4 text-center text-primary">Demande de Congé</h3>
 

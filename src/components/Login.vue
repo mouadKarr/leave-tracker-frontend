@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
-    <div class="p-4 bg-white rounded shadow" style="max-width: 400px; width: 100%;">
+    <div class="p-4 bg-white rounded shadow" style="max-width: 600px; width: 100%;">
       <h1 class="mb-3 text-center text-primary">Connexion Google</h1>
 
       <div class="mb-3">

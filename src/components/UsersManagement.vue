@@ -153,7 +153,7 @@
     }
     try {
       await apiClient.put(`/${user.id}/role`, { role: editedRoles.value[user.id] })
-      alert(`Rôle de ${user.email} mis à jour.`)
+      alert(`Rôle de ${user.fullName} mis à jour.`)
       await fetchUsers()
     } catch (err) {
       alert("Erreur lors de la mise à jour du rôle.")
