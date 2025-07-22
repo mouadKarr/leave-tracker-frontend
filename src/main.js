@@ -1,12 +1,6 @@
 import 'bootstrap/dist/css/bootstrap.min.css'
-
-// Import Vue's createApp function to create a new Vue application
 import { createApp } from 'vue'
-
-// Import the root App component
 import App from './App.vue'
-
-// Import the Google Login plugin for Vue 3
 import GoogleLoginPlugin from 'vue3-google-login'
 import router from './router'
 
