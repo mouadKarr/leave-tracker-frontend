@@ -13,6 +13,7 @@
           type="date"
           id="startDate"
           v-model="startDate"
+          :min="today"
           required
           class="form-control"
         />
@@ -24,6 +25,7 @@
           type="date"
           id="endDate"
           v-model="endDate"
+          :min="startDate || today"
           required
           class="form-control"
         />
@@ -35,18 +37,13 @@
           id="reason"
           v-model="reason"
           placeholder="Ex: Vacances, rendez-vous médical..."
-          required
           class="form-control"
           rows="4"
         ></textarea>
       </div>
 
-      <!-- Envoyer -->
-      <button type="submit" class="btn btn-primary w-100">
-        📤 Envoyer la demande
-      </button>
+      <button type="submit" class="btn btn-primary w-100">📤 Envoyer la demande</button>
 
-      <!-- Consulter mes demandes -->
       <button
         type="button"
         class="btn btn-outline-secondary mt-3 w-100"
@@ -64,19 +61,23 @@ import { useRouter } from 'vue-router'
 import { submitLeaveRequest } from '@/services/leaveService'
 
 const router = useRouter()
-
 const startDate = ref('')
 const endDate = ref('')
 const reason = ref('')
 
-const submitLeave = async () => {
+const today = new Date().toISOString().split('T')[0]
+
+async function submitLeave() {
+  if (endDate.value < startDate.value) {
+    alert("❗ La date de fin ne peut pas être avant la date de début.")
+    return
+  }
   try {
-    const token = localStorage.getItem('token')
     await submitLeaveRequest({
       startDate: startDate.value,
       endDate: endDate.value,
       reason: reason.value,
-    }, token)
+    })
     alert("✅ Demande envoyée avec succès")
     startDate.value = ''
     endDate.value = ''
@@ -87,7 +88,7 @@ const submitLeave = async () => {
   }
 }
 
-const goToMyRequests = () => {
+function goToMyRequests() {
   router.push('/mes-demandes')
 }
 </script>

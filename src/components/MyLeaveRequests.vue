@@ -13,6 +13,7 @@
                   <th>Date de début</th>
                   <th>Date de fin</th>
                   <th>Statut</th>
+                  <th>Annuler la demande</th>
                 </tr>
               </thead>
               <tbody>
@@ -21,8 +22,18 @@
                   <td>{{ formatDate(leave.endDate) }}</td>
                   <td>
                     <span class="badge" :class="statusClass(leave.status)">
-                      {{ statusLabels[leave.status] }}
+                      {{ statusLabels[leave.status] ?? 'Inconnu' }}
                     </span>
+                  </td>
+                  <td>
+                    <button
+                      v-if="leave.status === 'Pending'"
+                      @click="cancelLeave(leave.id)"
+                      class="btn btn-sm btn-danger w-100"
+                      :disabled="loading"
+                    >
+                      Annuler
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -40,23 +51,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getUserLeaveRequests } from '@/services/leaveService'
+import { getUserLeaveRequests, cancelLeaveById } from '@/services/leaveService'
 
 const leaveRequests = ref([])
+const loading = ref(false)
 
 const statusLabels = {
-  0: 'En attente',
-  1: 'Validé',
-  2: 'Rejeté'
+  Pending: 'En attente',
+  Approved: 'Validé',
+  Rejected: 'Rejeté'
 }
 
 function statusClass(status) {
   switch (status) {
-    case 0:
+    case 'Pending':
       return 'bg-warning text-dark'
-    case 1:
+    case 'Approved':
       return 'bg-success'
-    case 2:
+    case 'Rejected':
       return 'bg-danger'
     default:
       return 'bg-secondary'
@@ -68,16 +80,28 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('fr-FR', options)
 }
 
-onMounted(async () => {
-  const token = localStorage.getItem('token')
+async function fetchLeaves() {
   const userId = localStorage.getItem('userId')
-
   try {
-    const result = await getUserLeaveRequests(userId, token)
-    // certains backends retournent leurs listes dans result.$values
+    const result = await getUserLeaveRequests(userId)
     leaveRequests.value = result.$values ?? result
   } catch (error) {
     console.error('Erreur lors de la récupération des demandes de congé:', error)
   }
-})
+}
+
+async function cancelLeave(id) {
+  loading.value = true
+  try {
+    await cancelLeaveById(id)
+    await fetchLeaves()
+  } catch (error) {
+    console.error("Erreur lors de l'annulation de la demande :", error)
+    alert("Impossible d'annuler la demande.")
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchLeaves)
 </script>
