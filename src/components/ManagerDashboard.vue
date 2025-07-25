@@ -1,67 +1,62 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getAllLeaves, approveLeaveById, rejectLeaveById } from '@/services/leaveService'
+import { USER_ROLES, LEAVE_STATUSES, LEAVE_STATUS_LABELS, LEAVE_STATUS_CLASSES } from '@/utils/constants'
 
-function getCurrentUserEmail() {
+// ✅ Decode token to get email and role
+function decodeToken() {
   const token = localStorage.getItem('token')
-  if (!token) return null
+  if (!token) return {}
   try {
-    const payload = token.split('.')[1]
-    const decoded = JSON.parse(atob(payload))
-    return decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ??
-           decoded.email ?? null
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return {
+      email: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] || payload.email || null,
+      role: payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || null
+    }
   } catch (e) {
-    console.error('Erreur décodage JWT:', e)
-    return null
+    console.error('JWT decoding error:', e)
+    return {}
   }
 }
 
-function getCurrentUserRole() {
-  const token = localStorage.getItem('token')
-  if (!token) return null
-  try {
-    const payload = token.split('.')[1]
-    const decoded = JSON.parse(atob(payload))
-    return decoded.role ??
-           decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? null
-  } catch (e) {
-    console.error('Erreur décodage JWT:', e)
-    return null
-  }
-}
+const { email: currentEmail, role: currentRole } = decodeToken()
 
-const currentEmail = getCurrentUserEmail()
-const currentRole = getCurrentUserRole()
-
-if (currentRole !== 'Manager' && currentRole !== 'SuperAdmin') {
-  alert("Accès refusé : vous n'avez pas les droits nécessaires.")
+// ✅ Check permissions
+if (![USER_ROLES.MANAGER, USER_ROLES.SUPERADMIN].includes(currentRole)) {
+  alert("Access denied: you don't have the necessary rights.")
   window.location.href = '/'
 }
 
 const leaveRequests = ref([])
 const loading = ref(true)
+const error = ref(null)
+const actionLoadingId = ref(null)
 
+// Normalize email for comparison
 function normalizeEmail(email) {
   return (email ?? '').toLowerCase().trim()
 }
 
+// Compare two emails
 function isSameEmail(email1, email2) {
   return normalizeEmail(email1) === normalizeEmail(email2)
 }
 
+// Disable action buttons for managers on their own requests
 function isActionDisabled(email) {
-  return (
-    currentRole === 'Manager' && isSameEmail(email, currentEmail)
-  )
+  return currentRole === USER_ROLES.MANAGER && isSameEmail(email, currentEmail)
 }
 
+// Fetch all leave requests
 async function fetchLeaves() {
   loading.value = true
+  error.value = null
   try {
     const res = await getAllLeaves()
     leaveRequests.value = Array.isArray(res) ? res : res?.$values ?? []
   } catch (err) {
     console.error(err)
+    error.value = err.response?.data?.message || "Error loading leave requests."
   } finally {
     loading.value = false
   }
@@ -69,80 +64,86 @@ async function fetchLeaves() {
 
 onMounted(fetchLeaves)
 
+// Format a date string for display
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return isNaN(d) ? '' : d.toLocaleDateString('fr-FR')
 }
 
-function statusText(status) {
-  return {
-    Pending: 'En attente',
-    Approved: 'Approuvé',
-    Rejected: 'Rejeté'
-  }[status] ?? 'Inconnu'
-}
-
+// ✅ Use constants for status classes
 function statusClass(status) {
-  return {
-    Pending: 'badge bg-warning text-dark',
-    Approved: 'badge bg-success',
-    Rejected: 'badge bg-danger'
-  }[status] ?? 'badge bg-secondary'
+  return `badge ${LEAVE_STATUS_CLASSES[status] || 'bg-secondary'}`
 }
 
+// Get status label text
+function statusText(status) {
+  return LEAVE_STATUS_LABELS[status] || 'Unknown'
+}
+
+// Text shown when actions are disabled
 function actionStatusText(status) {
-  if (status === 'Approved') return 'Déjà approuvé'
-  if (status === 'Rejected') return 'Déjà rejeté'
+  if (status === LEAVE_STATUSES.APPROVED) return 'Already approved'
+  if (status === LEAVE_STATUSES.REJECTED) return 'Already rejected'
   return '-'
 }
 
+// ✅ Actions: approve or reject leave requests
 async function handleApprove(id) {
+  if (!confirm("Do you confirm the approval of this request?")) return
+  actionLoadingId.value = id
   try {
     await approveLeaveById(id)
     await fetchLeaves()
   } catch (error) {
-    alert("Erreur lors de l'approbation de la demande.")
+    alert("Error approving the request.")
     console.error(error)
+  } finally {
+    actionLoadingId.value = null
   }
 }
 
 async function handleReject(id) {
+  if (!confirm("Do you confirm the rejection of this request?")) return
+  actionLoadingId.value = id
   try {
     await rejectLeaveById(id)
     await fetchLeaves()
   } catch (error) {
-    alert("Erreur lors du rejet de la demande.")
+    alert("Error rejecting the request.")
     console.error(error)
+  } finally {
+    actionLoadingId.value = null
   }
 }
 </script>
 
 <template>
   <div class="container mt-5">
-    <h2 class="mb-4 text-center">Tableau de bord du manager</h2>
+    <h2 class="mb-4 text-center">Manager Dashboard</h2>
 
-    <div v-if="loading" class="text-center fs-5 py-5">Chargement des demandes...</div>
+    <div v-if="loading" class="text-center fs-5 py-5">Loading requests...</div>
+    <div v-else-if="error" class="alert alert-danger text-center">{{ error }}</div>
     <div v-else-if="leaveRequests.length === 0" class="text-center fs-5 py-5 text-muted">
-      Aucune demande trouvée.
+      No requests found.
     </div>
 
     <div v-else class="table-responsive shadow rounded">
       <table class="table table-striped table-hover align-middle">
         <thead class="table-primary text-center">
           <tr>
-            <th>Employé</th>
+            <th>Employee</th>
             <th>Dates</th>
-            <th>Motif</th>
-            <th>Statut</th>
+            <th>Reason</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="leave in leaveRequests" :key="leave.id" class="align-middle">
-            <td class="fw-semibold">{{ leave.userFullName ?? 'Inconnu' }}</td>
+            <td class="fw-semibold">{{ leave.userFullName ?? 'Unknown' }}</td>
             <td>{{ formatDate(leave.startDate) }} → {{ formatDate(leave.endDate) }}</td>
-            <td>{{ leave.reason}}</td>
+            <td>{{ leave.reason }}</td>
             <td class="text-center">
               <span :class="statusClass(leave.status)">
                 {{ statusText(leave.status) }}
@@ -150,22 +151,24 @@ async function handleReject(id) {
             </td>
             <td class="text-center">
               <button
-                v-if="leave.status === 'Pending'"
+                v-if="leave.status === LEAVE_STATUSES.PENDING"
                 @click="handleApprove(leave.id)"
                 class="btn btn-success btn-sm me-2"
-                :disabled="isActionDisabled(leave.userEmail)"
-                title="Approuver la demande"
+                :disabled="isActionDisabled(leave.userEmail) || actionLoadingId === leave.id"
+                title="Approve request"
               >
-                Approuver
+                <span v-if="actionLoadingId === leave.id" class="spinner-border spinner-border-sm"></span>
+                <span v-else>Approve</span>
               </button>
               <button
-                v-if="leave.status === 'Pending'"
+                v-if="leave.status === LEAVE_STATUSES.PENDING"
                 @click="handleReject(leave.id)"
                 class="btn btn-danger btn-sm"
-                :disabled="isActionDisabled(leave.userEmail)"
-                title="Rejeter la demande"
+                :disabled="isActionDisabled(leave.userEmail) || actionLoadingId === leave.id"
+                title="Reject request"
               >
-                Rejeter
+                <span v-if="actionLoadingId === leave.id" class="spinner-border spinner-border-sm"></span>
+                <span v-else>Reject</span>
               </button>
               <span v-else class="fst-italic text-muted">
                 {{ actionStatusText(leave.status) }}
@@ -206,5 +209,10 @@ async function handleReject(id) {
 
 .fst-italic {
   font-style: italic;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
 }
 </style>

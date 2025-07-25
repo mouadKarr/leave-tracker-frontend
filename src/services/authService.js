@@ -6,10 +6,19 @@ const API_URL = 'http://localhost:5032/api/auth'
 export async function loginWithGoogle(idToken, role) {
   try {
     const res = await axios.post(`${API_URL}/google`, { idToken, role })
-    return res.data
+    const { token, userId } = res.data
+
+    // ✅ Sauvegarde du token JWT et userId
+    localStorage.setItem('token', token)
+    localStorage.setItem('userId', userId)
+
+    return { token, userId }
   } catch (err) {
-    console.error('Erreur dans authService:', err)
-    throw err
+    console.error('Erreur dans loginWithGoogle:', err)
+    if (err.response && err.response.data && err.response.data.message) {
+      throw new Error(err.response.data.message)
+    }
+    throw new Error('Une erreur est survenue lors de la connexion.')
   }
 }
 
@@ -39,4 +48,15 @@ export function getCurrentUserRole() {
     console.error('Erreur décodage JWT:', e)
     return null
   }
+}
+
+// Get current userId stored locally
+export function getCurrentUserId() {
+  return localStorage.getItem('userId')
+}
+
+// Logout user
+export function logout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('userId')
 }

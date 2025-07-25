@@ -1,25 +1,22 @@
 <template>
     <div>
-      <h2 class="mb-4">Gestion des utilisateurs</h2>
+      <h2 class="mb-4">User Management</h2>
   
-      <div v-if="loading" class="alert alert-info rounded">
-        Chargement en cours...
-      </div>
-      <div v-if="error" class="alert alert-danger rounded">
-        {{ error }}
-      </div>
+      <!-- Messages -->
+      <div v-if="loading" class="alert alert-info rounded">Loading...</div>
+      <div v-if="error" class="alert alert-danger rounded">{{ error }}</div>
   
       <div v-if="!loading && !error">
         <div v-if="users.length === 0" class="alert alert-warning rounded">
-          Aucun utilisateur trouvé.
+          No users found.
         </div>
         <div v-else class="table-responsive">
-          <table class="table table-striped table-hover align-middle rounded" style="overflow: hidden;">
+          <table class="table table-striped table-hover align-middle rounded">
             <thead class="table-dark">
               <tr>
-                <th>Nom complet</th>
+                <th>Full Name</th>
                 <th>Email</th>
-                <th>Rôle</th>
+                <th>Role</th>
                 <th style="width: 200px;">Actions</th>
               </tr>
             </thead>
@@ -28,19 +25,21 @@
                 <td>{{ user.fullName }}</td>
                 <td>{{ user.email }}</td>
                 <td>
+                  <!-- Show a badge if it's the current logged-in user -->
                   <div v-if="isCurrentUser(user)">
                     <span class="badge" :class="getRoleBadgeClass(user.role)">
                       {{ user.role }}
                     </span>
                   </div>
+                  <!-- Otherwise, allow role change -->
                   <div v-else>
                     <select
                       v-model="editedRoles[user.id]"
                       class="form-select form-select-sm rounded"
                     >
-                      <option value="Employee">Employee</option>
-                      <option value="Manager">Manager</option>
-                      <option value="SuperAdmin">SuperAdmin</option>
+                      <option v-for="role in ROLE_OPTIONS" :key="role" :value="role">
+                        {{ role }}
+                      </option>
                     </select>
                   </div>
                 </td>
@@ -50,16 +49,16 @@
                       @click="saveUserRole(user)"
                       class="btn btn-sm btn-primary rounded"
                       :disabled="editedRoles[user.id] === user.role"
-                      title="Enregistrer le rôle"
+                      title="Save role"
                     >
-                      Enregistrer
+                      Save
                     </button>
                     <button
                       @click="deleteUser(user)"
                       class="btn btn-sm btn-danger rounded"
-                      title="Supprimer cet utilisateur"
+                      title="Delete this user"
                     >
-                      Supprimer
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -74,53 +73,52 @@
   <script setup>
   import { ref, onMounted } from 'vue'
   import axios from 'axios'
+  import { USER_ROLES, ROLE_OPTIONS, ROLE_BADGE_CLASSES } from '@/utils/constants'
   
+  // ✅ States
   const users = ref([])
   const loading = ref(false)
   const error = ref(null)
-  
   const editedRoles = ref({})
   
+  // ✅ Get current user email from JWT token
   const currentUserEmail = (() => {
     const token = localStorage.getItem('token')
     if (!token) return ''
     try {
-      const base64Url = token.split('.')[1]
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-      const jsonPayload = atob(base64)
-      const decoded = JSON.parse(jsonPayload)
-      return decoded.email || decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || ''
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.email || ''
     } catch {
       return ''
     }
   })()
   
+  // ✅ Axios instance with authorization token
   const apiClient = axios.create({
-    baseURL: 'http://localhost:5032/api/users',
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`
+    baseURL: 'http://localhost:5032/api/users'
+  })
+  apiClient.interceptors.request.use(config => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
+    return config
   })
   
+  // ✅ Utility functions
   function isCurrentUser(user) {
     return user.email.toLowerCase() === currentUserEmail.toLowerCase()
   }
   
   function normalizeRole(role) {
-    return ['Manager', 'SuperAdmin'].includes(role) ? role : 'Employee'
+    return ROLE_OPTIONS.includes(role) ? role : USER_ROLES.EMPLOYEE
   }
   
   function getRoleBadgeClass(role) {
-    switch (role) {
-      case 'Manager':
-        return 'bg-warning text-dark'
-      case 'SuperAdmin':
-        return 'bg-success'
-      default:
-        return 'bg-secondary'
-    }
+    return ROLE_BADGE_CLASSES[role] || ROLE_BADGE_CLASSES[USER_ROLES.EMPLOYEE]
   }
   
+  // ✅ Fetch all users from API
   async function fetchUsers() {
     loading.value = true
     error.value = null
@@ -137,7 +135,7 @@
     } catch (err) {
       console.error(err)
       if (err.response) {
-        error.value = `Erreur ${err.response.status} : ${err.response.data?.message || err.response.statusText}`
+        error.value = `Error ${err.response.status}: ${err.response.data?.message || err.response.statusText}`
       } else {
         error.value = err.message
       }
@@ -146,31 +144,31 @@
     }
   }
   
+  // ✅ Update user role
   async function saveUserRole(user) {
     if (isCurrentUser(user)) {
-      alert("Vous ne pouvez pas modifier votre propre rôle.")
+      alert("You cannot change your own role.")
       return
     }
     try {
       await apiClient.put(`/${user.id}/role`, { role: editedRoles.value[user.id] })
-      alert(`Rôle de ${user.fullName} mis à jour.`)
+      alert(`Role for ${user.fullName} updated.`)
       await fetchUsers()
     } catch (err) {
-      alert("Erreur lors de la mise à jour du rôle.")
+      alert(err.response?.data?.message || "Error updating role.")
       await fetchUsers()
     }
   }
   
+  // ✅ Delete user
   async function deleteUser(user) {
-    if (!confirm(`Confirmez la supprission de ${user.fullName}.`)) {
-      return
-    }
+    if (!confirm(`Confirm deletion of ${user.fullName}?`)) return
     try {
       await apiClient.delete(`/${user.id}`)
-      alert(`Utilisateur ${user.fullName} supprimé.`)
+      alert(`User ${user.fullName} deleted.`)
       await fetchUsers()
     } catch (err) {
-      alert("Erreur lors de la suppression de l'utilisateur.")
+      alert(err.response?.data?.message || "Error deleting user.")
     }
   }
   
