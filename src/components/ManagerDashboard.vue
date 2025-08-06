@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { getAllLeaves, approveLeaveById, rejectLeaveById } from '@/services/leaveService'
 import { USER_ROLES, LEAVE_STATUSES, LEAVE_STATUS_LABELS, LEAVE_STATUS_CLASSES } from '@/utils/constants'
 
-// ✅ Decode token to get email and role
 function decodeToken() {
   const token = localStorage.getItem('token')
   if (!token) return {}
@@ -21,7 +20,6 @@ function decodeToken() {
 
 const { email: currentEmail, role: currentRole } = decodeToken()
 
-// ✅ Check permissions
 if (![USER_ROLES.MANAGER, USER_ROLES.SUPERADMIN].includes(currentRole)) {
   alert("Access denied: you don't have the necessary rights.")
   window.location.href = '/'
@@ -32,28 +30,37 @@ const loading = ref(true)
 const error = ref(null)
 const actionLoadingId = ref(null)
 
-// Normalize email for comparison
+// Nouveau : stockage des commentaires admin temporaires par id de demande
+const adminComments = ref({})
+
+// Normalize email pour comparaison
 function normalizeEmail(email) {
   return (email ?? '').toLowerCase().trim()
 }
 
-// Compare two emails
 function isSameEmail(email1, email2) {
   return normalizeEmail(email1) === normalizeEmail(email2)
 }
 
-// Disable action buttons for managers on their own requests
 function isActionDisabled(email) {
-  return currentRole === USER_ROLES.MANAGER && isSameEmail(email, currentEmail)
+  if (currentRole === USER_ROLES.MANAGER && isSameEmail(email, currentEmail)) {
+    return true
+  }
+  return false
 }
 
-// Fetch all leave requests
 async function fetchLeaves() {
   loading.value = true
   error.value = null
   try {
     const res = await getAllLeaves()
     leaveRequests.value = Array.isArray(res) ? res : res?.$values ?? []
+
+    // Initialiser les commentaires admin avec les valeurs reçues
+    adminComments.value = {}
+    leaveRequests.value.forEach(l => {
+      adminComments.value[l.id] = l.adminComment || ''
+    })
   } catch (err) {
     console.error(err)
     error.value = err.response?.data?.message || "Error loading leave requests."
@@ -64,36 +71,33 @@ async function fetchLeaves() {
 
 onMounted(fetchLeaves)
 
-// Format a date string for display
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return isNaN(d) ? '' : d.toLocaleDateString('fr-FR')
 }
 
-// ✅ Use constants for status classes
 function statusClass(status) {
   return `badge ${LEAVE_STATUS_CLASSES[status] || 'bg-secondary'}`
 }
 
-// Get status label text
 function statusText(status) {
   return LEAVE_STATUS_LABELS[status] || 'Unknown'
 }
 
-// Text shown when actions are disabled
 function actionStatusText(status) {
   if (status === LEAVE_STATUSES.APPROVED) return 'Already approved'
   if (status === LEAVE_STATUSES.REJECTED) return 'Already rejected'
   return '-'
 }
 
-// ✅ Actions: approve or reject leave requests
+// Mise à jour : fonctions modifiées pour envoyer aussi adminComment
+
 async function handleApprove(id) {
   if (!confirm("Do you confirm the approval of this request?")) return
   actionLoadingId.value = id
   try {
-    await approveLeaveById(id)
+    await approveLeaveById(id, adminComments.value[id])
     await fetchLeaves()
   } catch (error) {
     alert("Error approving the request.")
@@ -107,7 +111,7 @@ async function handleReject(id) {
   if (!confirm("Do you confirm the rejection of this request?")) return
   actionLoadingId.value = id
   try {
-    await rejectLeaveById(id)
+    await rejectLeaveById(id, adminComments.value[id])
     await fetchLeaves()
   } catch (error) {
     alert("Error rejecting the request.")
@@ -135,6 +139,7 @@ async function handleReject(id) {
             <th>Employee</th>
             <th>Dates</th>
             <th>Reason</th>
+            <th>Admin Comment</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -144,6 +149,15 @@ async function handleReject(id) {
             <td class="fw-semibold">{{ leave.userFullName ?? 'Unknown' }}</td>
             <td>{{ formatDate(leave.startDate) }} → {{ formatDate(leave.endDate) }}</td>
             <td>{{ leave.reason }}</td>
+            <td>
+              <textarea
+                v-model="adminComments[leave.id]"
+                :disabled="leave.status !== LEAVE_STATUSES.PENDING"
+                class="form-control form-control-sm"
+                placeholder="Add admin comment"
+                rows="2"
+              ></textarea>
+            </td>
             <td class="text-center">
               <span :class="statusClass(leave.status)">
                 {{ statusText(leave.status) }}
@@ -214,5 +228,10 @@ async function handleReject(id) {
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
+}
+
+textarea.form-control-sm {
+  resize: vertical;
+  max-height: 5rem;
 }
 </style>

@@ -7,6 +7,7 @@ import DemandeConge from '@/components/LeaveRequestForm.vue'
 import MesDemandes from '@/components/MyLeaveRequests.vue'
 import ManagerDashboard from '@/components/ManagerDashboard.vue'
 import UsersManagement from '@/components/UsersManagement.vue'
+import LeaveCalendar from '@/components/LeaveCalendar.vue' // ✅ Ajout du calendrier
 
 const routes = [
   { path: '/login', component: Login },
@@ -17,6 +18,7 @@ const routes = [
       { path: '', component: Home },
       { path: 'demande-conge', component: DemandeConge },
       { path: 'mes-demandes', component: MesDemandes },
+      { path: 'calendar', component: LeaveCalendar }, // ✅ Nouvelle route calendrier
       { 
         path: 'manager',
         component: ManagerDashboard,
@@ -37,6 +39,7 @@ const router = createRouter({
   routes
 })
 
+// ✅ Middleware pour gérer les rôles
 router.beforeEach((to, from, next) => {
   const user = JSON.parse(localStorage.getItem('user'))
   const requiredRoles = to.meta.requiresRole

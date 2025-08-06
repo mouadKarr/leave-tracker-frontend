@@ -8,35 +8,42 @@
       <ul class="nav flex-column w-100">
         <li class="nav-item w-100 mb-2">
           <router-link to="/" class="nav-link text-white px-3">
-            🏠 <span class="label">Accueil</span>
+            🏠 <span class="label">Home</span>
           </router-link>
         </li>
         <li class="nav-item w-100 mb-2">
           <router-link to="/demande-conge" class="nav-link text-white px-3">
-            📤 <span class="label">Demande</span>
+            📤 <span class="label">Request</span>
           </router-link>
         </li>
         <li class="nav-item w-100 mb-2">
           <router-link to="/mes-demandes" class="nav-link text-white px-3">
-            📄 <span class="label">Mes demandes</span>
+            📄 <span class="label">My Requests</span>
+          </router-link>
+        </li>
+
+        <!-- ✅ Link visible to all users -->
+        <li class="nav-item w-100 mb-2">
+          <router-link to="/calendar" class="nav-link text-white px-3">
+            📆 <span class="label">Calendar</span>
           </router-link>
         </li>
 
         <li v-if="userIsManagerOrSuperAdmin" class="nav-item w-100 mb-2">
           <router-link to="/manager" class="nav-link text-white px-3">
-            🛠 <span class="label">Manager</span>
+            🛠 <span class="label">Manage Requests</span>
           </router-link>
         </li>
 
         <li v-if="userIsSuperAdmin" class="nav-item w-100 mb-2">
           <router-link to="/admin/users" class="nav-link text-white px-3">
-            👤 <span class="label">Gestion des utilisateurs</span>
+            👤 <span class="label">User Management</span>
           </router-link>
         </li>
 
         <li class="nav-item w-100 mt-auto">
           <button @click="logout" class="btn btn-outline-light w-100">
-            🚪 <span class="label">Déconnexion</span>
+            🚪 <span class="label">Logout</span>
           </button>
         </li>
       </ul>

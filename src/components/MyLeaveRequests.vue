@@ -18,6 +18,7 @@
                   <th>Reason</th>
                   <th>Status</th>
                   <th>Action</th>
+                  <th>Admin Commentaire</th>
                 </tr>
               </thead>
               <tbody>
@@ -40,6 +41,13 @@
                       <span v-if="loadingActionId === leave.id" class="spinner-border spinner-border-sm"></span>
                       <span v-else>Cancel</span>
                     </button>
+                  </td>
+                  <td>
+                    <!-- Affiche commentaire si présent, sinon tiret -->
+                    <small v-if="leave.adminComment && leave.adminComment.trim().length > 0" class="fst-italic text-muted">
+                      {{ leave.adminComment }}
+                    </small>
+                    <span v-else class="text-muted">-</span>
                   </td>
                 </tr>
               </tbody>
