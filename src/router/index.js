@@ -7,7 +7,8 @@ import DemandeConge from '@/components/LeaveRequestForm.vue'
 import MesDemandes from '@/components/MyLeaveRequests.vue'
 import ManagerDashboard from '@/components/ManagerDashboard.vue'
 import UsersManagement from '@/components/UsersManagement.vue'
-import LeaveCalendar from '@/components/LeaveCalendar.vue' // ✅ Ajout du calendrier
+import LeaveCalendar from '@/components/LeaveCalendar.vue'
+import LeaveBalanceDashboard from '@/components/LeaveBalanceDashboard.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -18,7 +19,8 @@ const routes = [
       { path: '', component: Home },
       { path: 'demande-conge', component: DemandeConge },
       { path: 'mes-demandes', component: MesDemandes },
-      { path: 'calendar', component: LeaveCalendar }, // ✅ Nouvelle route calendrier
+      { path: 'calendar', component: LeaveCalendar },
+      { path: 'leave-balance', component: LeaveBalanceDashboard },
       { 
         path: 'manager',
         component: ManagerDashboard,

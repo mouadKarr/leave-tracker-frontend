@@ -12,6 +12,7 @@
 
       <h3 class="mb-4 text-center text-primary">Demande de Congé</h3>
 
+      <!-- Date de début -->
       <div class="mb-3">
         <label for="startDate" class="form-label">📅 Date de début</label>
         <input
@@ -27,13 +28,18 @@
         <small v-if="startDate && getPublicHolidaysNearDate(startDate).length" class="text-muted mt-1 d-block">
           ⚠️ Jours fériés proches :
           <ul class="mb-0 ps-3">
-            <li v-for="h in getPublicHolidaysNearDate(startDate)" :key="h.date" style="color:gray; font-size: 0.9em">
+            <li
+              v-for="h in getPublicHolidaysNearDate(startDate)"
+              :key="h.date"
+              style="color:gray; font-size: 0.9em"
+            >
               {{ formatDateToYMD(h.date) }} - {{ h.name }}
             </li>
           </ul>
         </small>
       </div>
 
+      <!-- Date de fin -->
       <div class="mb-3">
         <label for="endDate" class="form-label">📅 Date de fin</label>
         <input
@@ -49,13 +55,30 @@
         <small v-if="endDate && getPublicHolidaysNearDate(endDate).length" class="text-muted mt-1 d-block">
           ⚠️ Jours fériés proches :
           <ul class="mb-0 ps-3">
-            <li v-for="h in getPublicHolidaysNearDate(endDate)" :key="h.date" style="color:gray; font-size: 0.9em">
+            <li
+              v-for="h in getPublicHolidaysNearDate(endDate)"
+              :key="h.date"
+              style="color:gray; font-size: 0.9em"
+            >
               {{ formatDateToYMD(h.date) }} - {{ h.name }}
             </li>
           </ul>
         </small>
       </div>
-
+      <div class="mb-3">
+        <label for="leaveType" class="form-label">🏷️ Type de congé</label>
+        <select
+          id="leaveType"
+          v-model="leaveType"
+          class="form-select"
+          :disabled="loading"
+          required
+        >
+          <option value="Congés Payés Acquis">Congés Payés Acquis</option>
+          <option value="RTT/JRS/JRC">RTT/JRS/JRC</option>
+        </select>
+      </div>
+      <!-- Motif -->
       <div class="mb-3">
         <label for="reason" class="form-label">✏️ Motif</label>
         <textarea
@@ -68,6 +91,7 @@
         ></textarea>
       </div>
 
+      <!-- Boutons -->
       <button type="submit" class="btn btn-primary w-100" :disabled="loading">
         <span v-if="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
         📤 Envoyer la demande
@@ -92,112 +116,73 @@ import { submitLeaveRequest } from '@/services/leaveService'
 import { getPublicHolidays } from '@/services/holidayService'
 
 const router = useRouter()
+
 const startDate = ref('')
 const endDate = ref('')
 const reason = ref('')
 const loading = ref(false)
-const publicHolidays = ref([])
 const errorMessage = ref('')
+const publicHolidays = ref([])
+const leaveType = ref('')
 
 const today = new Date().toISOString().split('T')[0]
 
+// Format yyyy-mm-dd
 function formatDateToYMD(date) {
-  if (!date) return ''
   const d = new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
 onMounted(async () => {
-  publicHolidays.value = await getPublicHolidays('FR', new Date().getFullYear())
+  const year = new Date().getFullYear()
+  publicHolidays.value = await getPublicHolidays('FR', year)
 })
 
-const isPublicHoliday = (dateStr) => {
+function isPublicHoliday(dateStr) {
   const formatted = formatDateToYMD(dateStr)
   return publicHolidays.value.some(h => formatDateToYMD(h.date) === formatted)
 }
 
-const getPublicHolidaysInRange = (start, end) => {
-  if (!start || !end) return []
-  let currentDate = new Date(start)
-  const lastDate = new Date(end)
-  const matched = []
-
-  while (currentDate <= lastDate) {
-    const dayOfWeek = currentDate.getDay()
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const formatted = formatDateToYMD(currentDate)
-      const holiday = publicHolidays.value.find(h => formatDateToYMD(h.date) === formatted)
-      if (holiday) matched.push(holiday)
-    }
-    currentDate.setDate(currentDate.getDate() + 1)
-  }
-  return matched
-}
-
-const getPublicHolidaysNearDate = (dateStr) => {
-  if (!dateStr) return []
-  const date = new Date(dateStr)
-  return publicHolidays.value.filter(h => {
-    const d = new Date(h.date)
-    const diffDays = Math.abs((d - date) / (1000 * 60 * 60 * 24))
-    return diffDays <= 7
-  })
-}
-
-const startDateClass = computed(() => (isPublicHoliday(startDate.value) ? 'is-holiday' : ''))
-const endDateClass = computed(() => (isPublicHoliday(endDate.value) ? 'is-holiday' : ''))
-
-function isWeekend(date) {
-  const d = new Date(date)
-  const day = d.getDay()
+function isWeekend(dateStr) {
+  const day = new Date(dateStr).getDay()
   return day === 0 || day === 6
 }
 
-function hasWeekendInRange(start, end) {
-  let currentDate = new Date(start)
-  const lastDate = new Date(end)
-
-  while (currentDate <= lastDate) {
-    if (isWeekend(currentDate)) {
-      return true
-    }
-    currentDate.setDate(currentDate.getDate() + 1)
-  }
-  return false
+function getPublicHolidaysNearDate(dateStr) {
+  const target = new Date(dateStr)
+  return publicHolidays.value.filter(h => {
+    const diff = Math.abs(new Date(h.date) - target)
+    return diff / (1000 * 60 * 60 * 24) <= 7
+  })
 }
 
-watch(startDate, async (newVal) => {
-  if (newVal) {
-    const year = new Date(newVal).getFullYear()
-    publicHolidays.value = await getPublicHolidays('FR', year)
+// Classes pour mise en forme visuelle
+const startDateClass = computed(() => (isPublicHoliday(startDate.value) ? 'is-holiday' : ''))
+const endDateClass = computed(() => (isPublicHoliday(endDate.value) ? 'is-holiday' : ''))
 
-    if (isPublicHoliday(newVal)) {
-      errorMessage.value = "⚠️ La date de début est un jour férié."
-    } else if (isWeekend(newVal)) {
-      errorMessage.value = "⚠️ La date de début est un week-end."
-    } else {
-      errorMessage.value = ''
-    }
+// Vérifications dynamiques
+watch([startDate, endDate], async ([start, end]) => {
+  if (!start || !end) return
+
+  const yearStart = new Date(start).getFullYear()
+  const yearEnd = new Date(end).getFullYear()
+
+  if (yearStart !== yearEnd) {
+    const holidaysStart = await getPublicHolidays('FR', yearStart)
+    const holidaysEnd = await getPublicHolidays('FR', yearEnd)
+    publicHolidays.value = [...holidaysStart, ...holidaysEnd]
   }
-})
 
-watch(endDate, async (newVal) => {
-  if (newVal) {
-    const year = new Date(newVal).getFullYear()
-    if (year !== new Date(startDate.value).getFullYear()) {
-      publicHolidays.value = await getPublicHolidays('FR', year)
-    }
-
-    if (isPublicHoliday(newVal)) {
-      errorMessage.value = "⚠️ La date de fin est un jour férié."
-    } else if (isWeekend(newVal)) {
-      errorMessage.value = "⚠️ La date de fin est un week-end."
-    } else {
-      errorMessage.value = ''
-    }
+  if (isWeekend(start)) {
+    errorMessage.value = "⚠️ La date de début est un week-end."
+  } else if (isPublicHoliday(start)) {
+    errorMessage.value = "⚠️ La date de début est un jour férié."
+  } else if (isWeekend(end)) {
+    errorMessage.value = "⚠️ La date de fin est un week-end."
+  } else if (isPublicHoliday(end)) {
+    errorMessage.value = "⚠️ La date de fin est un jour férié."
+  } else {
+    errorMessage.value = ''
   }
 })
 
@@ -206,6 +191,11 @@ async function submitLeave() {
 
   if (!startDate.value || !endDate.value) {
     errorMessage.value = "❗ Veuillez renseigner les dates de début et de fin."
+    return
+  }
+
+  if (!leaveType.value) {
+    errorMessage.value = "❗ Veuillez sélectionner un type de congé."
     return
   }
 
@@ -220,15 +210,16 @@ async function submitLeave() {
       startDate: startDate.value,
       endDate: endDate.value,
       reason: reason.value.trim(),
+      leaveType: leaveType.value
     })
-    alert(`✅ Demande envoyée avec succès.`)
+    alert("✅ Demande envoyée avec succès.")
     startDate.value = ''
     endDate.value = ''
     reason.value = ''
+    leaveType.value = ''
   } catch (err) {
-    console.error('Erreur lors de la soumission:', err)
     const backendMessage = err?.response?.data?.message
-    errorMessage.value = backendMessage || "❌ Erreur lors de l'envoi de la demande, veuillez réessayer."
+    errorMessage.value = backendMessage || "❌ Erreur lors de l'envoi de la demande."
   } finally {
     loading.value = false
   }

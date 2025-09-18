@@ -12,6 +12,11 @@
           </router-link>
         </li>
         <li class="nav-item w-100 mb-2">
+          <router-link to="/leave-balance" class="nav-link text-white px-3">
+            📊 <span class="label">Soldes Congés</span>
+          </router-link>
+        </li>
+        <li class="nav-item w-100 mb-2">
           <router-link to="/demande-conge" class="nav-link text-white px-3">
             📤 <span class="label">Request</span>
           </router-link>
